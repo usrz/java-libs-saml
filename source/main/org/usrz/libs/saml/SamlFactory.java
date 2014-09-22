@@ -15,58 +15,65 @@
  * ========================================================================== */
 package org.usrz.libs.saml;
 
-import static org.usrz.libs.utils.codecs.Base64Codec.BASE_64;
+import static org.usrz.libs.utils.Check.notNull;
+import static org.w3c.dom.ls.DOMImplementationLS.MODE_SYNCHRONOUS;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.Date;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
 
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.usrz.libs.saml.Saml.Format;
 import org.usrz.libs.saml.Saml.ProtocolBinding;
-import org.usrz.libs.utils.Check;
+import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
+import org.w3c.dom.bootstrap.DOMImplementationRegistry;
+import org.w3c.dom.ls.DOMImplementationLS;
+import org.w3c.dom.ls.LSInput;
+import org.w3c.dom.ls.LSParser;
 
 public class SamlFactory {
 
-    private final DocumentBuilderFactory documentBuilder;
+    private final SamlCodec codec = new SamlCodec();
+
+    private final XMLSignatureFactory signatureFactory;
+    private final DOMImplementation domImplementation;
+    private final DOMImplementationLS domLoadSave;
     private final XPath xpath;
 
     public SamlFactory() {
-        documentBuilder = DocumentBuilderFactory.newInstance();
-        documentBuilder.setNamespaceAware(true);
-        xpath = XPathFactory.newInstance().newXPath();
-        xpath.setNamespaceContext(Saml.Namespace);
-    }
-
-    public SamlAuthnRequest getAuthnRequest(String request) {
-        final byte[] decoded = BASE_64.decode(Check.notNull(request, "Null request"));
-        final byte[] buffer = new byte[65536];
-
-        final Inflater inflater = new Inflater(true);
-        inflater.setInput(decoded);
-        final int length;
         try {
-            length = inflater.inflate(buffer);
-        } catch (DataFormatException exception) {
-            throw new IllegalArgumentException("Unable to inflate request", exception);
+            final DOMImplementationRegistry registry = DOMImplementationRegistry.newInstance();
+            domImplementation = registry.getDOMImplementation("XML 3.0");
+            domLoadSave = (DOMImplementationLS) domImplementation.getFeature("LS", "3.0");
+        } catch (Exception exception) {
+            throw new IllegalStateException("DOM Implementation can not be created", exception);
         }
 
-        final InputStream input = new ByteArrayInputStream(buffer, 0, length);
+        xpath = XPathFactory.newInstance().newXPath();
+        xpath.setNamespaceContext(Saml.Namespace.context());
+        signatureFactory = XMLSignatureFactory.getInstance("DOM");
+    }
+
+    public SamlResponseBuilder prepareResponse(SamlAuthnRequest request) {
+        return new SamlResponseBuilder(signatureFactory, domImplementation, domLoadSave,
+                                       notNull(request, "Null SAML Authn Request"));
+    }
+
+    public SamlAuthnRequest parseAuthnRequest(String request) {
+        final InputStream stream = new ByteArrayInputStream(codec.decode(request));
         final Document document;
         try {
-            document = documentBuilder.newDocumentBuilder().parse(input);
-        } catch (SAXException | IOException | ParserConfigurationException exception) {
+            final LSInput input = domLoadSave.createLSInput();
+            input.setByteStream(stream);
+            final LSParser parser = domLoadSave.createLSParser(MODE_SYNCHRONOUS, null);
+            document = parser.parse(input);
+        } catch (Exception exception) {
             throw new IllegalArgumentException("Unable to parse request", exception);
         }
 

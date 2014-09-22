@@ -4,7 +4,8 @@
                 ID="identifier_2"
                 InResponseTo="identifier_1"
                 Version="2.0"
-                IssueInstant="2004-12-05T09:22:05">
+                IssueInstant="2004-12-05T09:22:05"
+                Destination="https://www.google.com/a/usrz.com/acs">
 
   <saml:Issuer>https://idp.example.org/SAML2</saml:Issuer>
 

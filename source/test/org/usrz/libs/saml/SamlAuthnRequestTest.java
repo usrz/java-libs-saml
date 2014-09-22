@@ -30,7 +30,7 @@ public class SamlAuthnRequestTest extends AbstractTest {
     public void testSamlAuthnRequest()
     throws Exception {
         final String decoded = "fVLJTsMwEL0j8Q+W79mqHsBqggoIUYklooEDN9eZNAbHEzxOC3w9bgoCDiD5YL0Zv2U8s5PXzrANONJoc57FKWdgFdbarnN+X11ER/ykODyYkexML+aDb+0dvAxAnoWXlsRYyPngrEBJmoSVHZDwSizn11diEqeid+hRoeFscZ7zftWiVqifUDXQSoTaGiub51XdGzCmflKtbUA+c/bwZWuys7UgGmBhyUvrA5Rm0yg9jiZZlU3FNA3nkbPyU+lU232C/2yt9k0kLquqjMrbZTUSbHQN7iZ053yNuDYQK+x28qUk0psAN9IQcDYnAueDwTO0NHTgluA2WsH93VXOW+97Ekmy3W7jb5pEJgO59/1VES/GuYoxmvsx0P+Nyy9hXnxTz5IfVMXnf+1iLM5LNFq9sbkxuD1zIH3I4N0QIlyg66T/Wy2LsxHRddSMrWKw1IPSjYaas6TYq/5ejLAuHw==";
-        final SamlAuthnRequest request = new SamlFactory().getAuthnRequest(decoded);
+        final SamlAuthnRequest request = new SamlFactory().parseAuthnRequest(decoded);
 
         assertEquals(request.getID(), "pbhoicoijocfehaoednlnafkbdplelldjchnfeak");
         assertEquals(request.getIssuer(), "google.com");
