@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0">
+
+  <info organisation="org.usrz.libs" module="saml" revision="0.0"/>
+
+  <configurations>
+    <conf name="default" visibility="public"/>
+    <conf name="compile" visibility="private" extends="default"/>
+    <conf name="testing" visibility="private" extends="compile"/>
+  </configurations>
+
+  <publications>
+      <artifact name="saml" type="bin" ext="jar" conf="default"/>
+      <artifact name="saml" type="src" ext="zip" conf="default"/>
+      <artifact name="saml" type="doc" ext="zip" conf="default"/>
+  </publications>
+
+  <dependencies>
+    <dependency org="org.usrz.libs" name="testing" rev="latest.release" conf="testing-&gt;logging"/>
+  </dependencies>
+
+</ivy-module>
