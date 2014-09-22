@@ -16,6 +16,7 @@
   </publications>
 
   <dependencies>
+    <dependency org="org.usrz.libs" name="utils" rev="latest.release" conf="default"/>
     <dependency org="org.usrz.libs" name="testing" rev="latest.release" conf="testing-&gt;logging"/>
   </dependencies>
 
