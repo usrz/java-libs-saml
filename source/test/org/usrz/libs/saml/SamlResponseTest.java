@@ -15,6 +15,9 @@
  * ========================================================================== */
 package org.usrz.libs.saml;
 
+import static org.usrz.libs.saml.Saml.SignatureTarget.BOTH;
+import static org.usrz.libs.utils.Charsets.UTF8;
+
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.Security;
@@ -24,7 +27,11 @@ import javax.xml.crypto.dsig.Reference;
 import javax.xml.crypto.dsig.XMLSignature;
 import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.dom.DOMValidateContext;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import javax.xml.validation.Validator;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathFactory;
@@ -50,8 +57,8 @@ public class SamlResponseTest extends AbstractTest {
     public void initialize()
     throws Exception {
         final String decoded = "fVLJTsMwEL0j8Q+W79mqHsBqggoIUYklooEDN9eZNAbHEzxOC3w9bgoCDiD5YL0Zv2U8s5PXzrANONJoc57FKWdgFdbarnN+X11ER/ykODyYkexML+aDb+0dvAxAnoWXlsRYyPngrEBJmoSVHZDwSizn11diEqeid+hRoeFscZ7zftWiVqifUDXQSoTaGiub51XdGzCmflKtbUA+c/bwZWuys7UgGmBhyUvrA5Rm0yg9jiZZlU3FNA3nkbPyU+lU232C/2yt9k0kLquqjMrbZTUSbHQN7iZ053yNuDYQK+x28qUk0psAN9IQcDYnAueDwTO0NHTgluA2WsH93VXOW+97Ekmy3W7jb5pEJgO59/1VES/GuYoxmvsx0P+Nyy9hXnxTz5IfVMXnf+1iLM5LNFq9sbkxuD1zIH3I4N0QIlyg66T/Wy2LsxHRddSMrWKw1IPSjYaas6TYq/5ejLAuHw==";
-        factory = new SamlFactory();
-        request = factory.parseAuthnRequest(decoded);
+        factory = new SamlFactoryBase();
+        request = factory.parseAuthnRequest(decoded, true);
 
         Security.addProvider(new PEMProvider());
         final KeyStore keyStore = KeyStore.getInstance("PEM");
@@ -74,23 +81,24 @@ public class SamlResponseTest extends AbstractTest {
                 .withSubject("foo@bar.com");
 
         final Validator validator = SchemaResolver.validator(SchemaResolver.SAML_PROTOCOL);
-        validator.validate(new DOMSource(builder.buildDocument()));
-    }
+        final Document document = builder.buildDocument();
+        validator.validate(new DOMSource(document));
+}
 
     @Test
-    public void testResponseSigned()
+    public void testResponseSignedBoth()
     throws Exception {
         final SamlResponseBuilder builder = factory.prepareResponse(request)
                 .withIssuer("http://www.usrz.com/saml/something")
                 .withSubject("foo@bar.com")
-                .withSignature(key, cert);
+                .withSignature(key, cert, BOTH);
 
         final Validator validator = SchemaResolver.validator(SchemaResolver.SAML_PROTOCOL);
         final Document document = builder.buildDocument();
         validator.validate(new DOMSource(document));
 
-        final String response = xpath.evaluate("/samlp:Response/ds:Signature/ds:SignatureValue", document);
-        final String assertion = xpath.evaluate("/samlp:Response/saml:Assertion/ds:Signature/ds:SignatureValue", document);
+        final String response = xpath.evaluate("/samlp:Response/dsig:Signature/dsig:SignatureValue", document);
+        final String assertion = xpath.evaluate("/samlp:Response/saml:Assertion/dsig:Signature/dsig:SignatureValue", document);
         assertNotNull(response, "Null response signature");
         assertNotNull(assertion, "Null assertion signature");
         assertNotEquals(response, "", "Null response signature");
@@ -101,7 +109,7 @@ public class SamlResponseTest extends AbstractTest {
     }
 
     @Test
-    public void testResponseSignedResponseOnly()
+    public void testResponseSignedOnlyResponse()
     throws Exception {
         final SamlResponseBuilder builder = factory.prepareResponse(request)
                 .withIssuer("http://www.usrz.com/saml/something")
@@ -112,15 +120,17 @@ public class SamlResponseTest extends AbstractTest {
         final Document document = builder.buildDocument();
         validator.validate(new DOMSource(document));
 
-        assertNotNull(xpath.evaluate("/samlp:Response/ds:Signature/ds:SignatureValue", document), "Null response signature");
-        assertNotEquals(xpath.evaluate("/samlp:Response/ds:Signature/ds:SignatureValue", document), "", "Empty response signature");
-        assertEquals(xpath.evaluate("/samlp:Response/saml:Assertion/ds:Signature/ds:SignatureValue", document), "", "Non-empty assertion signature");
+        assertNotNull(xpath.evaluate("/samlp:Response/dsig:Signature/dsig:SignatureValue", document), "Null response signature");
+        assertNotEquals(xpath.evaluate("/samlp:Response/dsig:Signature/dsig:SignatureValue", document), "", "Empty response signature");
+        assertEquals(xpath.evaluate("/samlp:Response/saml:Assertion/dsig:Signature/dsig:SignatureValue", document), "", "Non-empty assertion signature");
 
         assertTrue(validateSignatures(document), "One (or more) of the signatures is not valid");
+
+        serialize(document);
     }
 
     @Test
-    public void testResponseSignedAssertionOnly()
+    public void testResponseSignedOnlyAssertion()
     throws Exception {
         final SamlResponseBuilder builder = factory.prepareResponse(request)
                 .withIssuer("http://www.usrz.com/saml/something")
@@ -131,14 +141,24 @@ public class SamlResponseTest extends AbstractTest {
         final Document document = builder.buildDocument();
         validator.validate(new DOMSource(document));
 
-        assertEquals(xpath.evaluate("/samlp:Response/ds:Signature/ds:SignatureValue", document), "", "Non-empty response signature");
-        assertNotNull(xpath.evaluate("/samlp:Response/saml:Assertion/ds:Signature/ds:SignatureValue", document), "Null assertion signature");
-        assertNotEquals(xpath.evaluate("/samlp:Response/saml:Assertion/ds:Signature/ds:SignatureValue", document), "", "Empty assertion signature");
+        assertEquals(xpath.evaluate("/samlp:Response/dsig:Signature/dsig:SignatureValue", document), "", "Non-empty response signature");
+        assertNotNull(xpath.evaluate("/samlp:Response/saml:Assertion/dsig:Signature/dsig:SignatureValue", document), "Null assertion signature");
+        assertNotEquals(xpath.evaluate("/samlp:Response/saml:Assertion/dsig:Signature/dsig:SignatureValue", document), "", "Empty assertion signature");
 
         assertTrue(validateSignatures(document), "One (or more) of the signatures is not valid");
     }
 
     /* ====================================================================== */
+
+    public void serialize(Document document) throws Exception {
+        final StreamResult result = new StreamResult(System.out);
+        final DOMSource source = new DOMSource(document);
+        final Transformer transformer = TransformerFactory.newInstance().newTransformer();
+        //transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+        transformer.setOutputProperty(OutputKeys.ENCODING, UTF8.name());
+        //transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        transformer.transform(source, result);
+    }
 
     public boolean validateSignatures(Document document) throws Exception {
         final NodeList nodeList = document.getElementsByTagNameNS(XMLSignature.XMLNS, "Signature");

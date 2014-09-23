@@ -24,8 +24,16 @@ import org.usrz.libs.testing.AbstractTest;
 public class SamlCodecTest extends AbstractTest {
 
     @Test
-    public void testSamlCodec() {
-        final SamlCodec codec = new SamlCodec();
+    public void testSamlCodecWithCompression() {
+        testCodec(new SamlCodec(true));
+    }
+
+    @Test
+    public void testSamlCodecWithoutCompression() {
+        testCodec(new SamlCodec(false));
+    }
+
+    private void testCodec(SamlCodec codec) {
         byte[] original = new byte[4096];
         new Random().nextBytes(original);
 

@@ -15,32 +15,31 @@
  * ========================================================================== */
 package org.usrz.libs.saml;
 
-import java.net.URI;
-import java.util.Date;
-
-import org.usrz.libs.saml.Saml.NameIdFormat;
-import org.usrz.libs.saml.Saml.ProtocolBinding;
+import static org.usrz.libs.utils.Check.notNull;
 
 /**
- * A wrapper interface around a <i>SAML Authorization Request</i>.
+ * The base/default implementation of the {@link SamlFactory} interface.
  *
  * @author <a href="mailto:pier@usrz.com">Pier Fumagalli</a>
  */
-public interface SamlAuthnRequest {
+public class SamlFactoryBase implements SamlFactory {
 
-    /** The unique <i>ID</i> of the request. */
-    public String getID();
-    /** The <i>issuer</i> of the request. */
-    public String getIssuer();
-    /** The <i>version</i> of the request. */
-    public String getVersion();
-    /** The <i>instant</i> of the request as a {@link Date}. */
-    public Date getIssueInstant();
-    /** The <i>format</i> of the subjects as a {@link NameIdFormat}. */
-    public NameIdFormat getNameIDPolicy();
-    /** The <i>protocol</i> for the response as a {@link ProtocolBinding}. */
-    public ProtocolBinding getProtocolBinding();
-    /** The <i>location</i> where the request should be sent a {@link URI}. */
-    public URI getAssertionConsumerServiceURL();
+    public SamlFactoryBase() {
+        /* Nothing to do here */
+    }
 
+    @Override
+    public SamlResponseBuilder prepareResponse(SamlAuthnRequest request) {
+        notNull(request, "Null request");
+        return new SamlResponseBuilder()
+            .withInResponseTo(request.getID())
+            .withDestination(request.getAssertionConsumerServiceURL())
+            .withRecipient(request.getAssertionConsumerServiceURL())
+            .withAudience(request.getAssertionConsumerServiceURL());
+    }
+
+    @Override
+    public SamlAuthnRequest parseAuthnRequest(String request, boolean deflate) {
+        return new SamlAuthnRequestParser().parse(notNull(request, "Null request"), deflate);
+    }
 }

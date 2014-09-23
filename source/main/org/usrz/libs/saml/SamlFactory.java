@@ -15,98 +15,38 @@
  * ========================================================================== */
 package org.usrz.libs.saml;
 
-import static org.usrz.libs.utils.Check.notNull;
-import static org.w3c.dom.ls.DOMImplementationLS.MODE_SYNCHRONOUS;
-
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.net.URI;
-import java.util.Date;
 
-import javax.xml.crypto.dsig.XMLSignatureFactory;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
+/**
+ * A factory for <i>SAML</i> objects.
+ *
+ * @author <a href="mailto:pier@usrz.com">Pier Fumagalli</a>
+ */
+public interface SamlFactory {
 
-import org.usrz.libs.saml.Saml.Format;
-import org.usrz.libs.saml.Saml.ProtocolBinding;
-import org.w3c.dom.DOMImplementation;
-import org.w3c.dom.Document;
-import org.w3c.dom.bootstrap.DOMImplementationRegistry;
-import org.w3c.dom.ls.DOMImplementationLS;
-import org.w3c.dom.ls.LSInput;
-import org.w3c.dom.ls.LSParser;
+    /**
+     * Parse a request into a {@link SamlAuthnRequest} instance.
+     *
+     * @param request The base-64 encoded (possibly deflated) request.
+     * @param inflate Whether the request was deflated or not.
+     */
+    public SamlAuthnRequest parseAuthnRequest(String request, boolean inflate);
 
-public class SamlFactory {
+    /**
+     * Create a new {@link SamlResponseBuilder} associated with the given
+     * {@link SamlAuthnRequest} instance.
+     * <p>
+     * By default, the {@link SamlResponseBuilder} will be prepared as follows:
+     * </p>
+     * <ul>
+     *   <li>{@link SamlResponseBuilder#withInResponseTo(String)}
+     *       <br>will be set to {@link SamlAuthnRequest#getID()}</li>
+     *   <li>{@link SamlResponseBuilder#withDestination(URI)}, <br>
+     *       {@link SamlResponseBuilder#withRecipient(URI)}, and <br>
+     *       {@link SamlResponseBuilder#withAudience(URI)}<br>will be set to
+     *       {@link SamlAuthnRequest#getAssertionConsumerServiceURL()}</li>
+     * </ul>
+     */
+    public SamlResponseBuilder prepareResponse(SamlAuthnRequest request);
 
-    private final SamlCodec codec = new SamlCodec();
-
-    private final XMLSignatureFactory signatureFactory;
-    private final DOMImplementation domImplementation;
-    private final DOMImplementationLS domLoadSave;
-    private final XPath xpath;
-
-    public SamlFactory() {
-        try {
-            final DOMImplementationRegistry registry = DOMImplementationRegistry.newInstance();
-            domImplementation = registry.getDOMImplementation("XML 3.0");
-            domLoadSave = (DOMImplementationLS) domImplementation.getFeature("LS", "3.0");
-        } catch (Exception exception) {
-            throw new IllegalStateException("DOM Implementation can not be created", exception);
-        }
-
-        xpath = XPathFactory.newInstance().newXPath();
-        xpath.setNamespaceContext(Saml.Namespace.context());
-        signatureFactory = XMLSignatureFactory.getInstance("DOM");
-    }
-
-    public SamlResponseBuilder prepareResponse(SamlAuthnRequest request) {
-        return new SamlResponseBuilder(signatureFactory, domImplementation, domLoadSave,
-                                       notNull(request, "Null SAML Authn Request"));
-    }
-
-    public SamlAuthnRequest parseAuthnRequest(String request) {
-        final InputStream stream = new ByteArrayInputStream(codec.decode(request));
-        final Document document;
-        try {
-            final LSInput input = domLoadSave.createLSInput();
-            input.setByteStream(stream);
-            final LSParser parser = domLoadSave.createLSParser(MODE_SYNCHRONOUS, null);
-            document = parser.parse(input);
-        } catch (Exception exception) {
-            throw new IllegalArgumentException("Unable to parse request", exception);
-        }
-
-        final String id;
-        final String issuer;
-        final String version;
-        final Date issueInstant;
-        final String providerName;
-        final Format nameIdPolicy;
-        final ProtocolBinding protocolBinding;
-        final URI assertionConsumerServiceURL;
-        try {
-            id = Saml.toString(xpath.evaluate("samlp:AuthnRequest/@ID", document));
-            issuer = Saml.toString(xpath.evaluate("samlp:AuthnRequest/saml:Issuer", document));
-            version = Saml.toString(xpath.evaluate("samlp:AuthnRequest/@Version", document));
-            issueInstant = Saml.toDate(xpath.evaluate("samlp:AuthnRequest/@IssueInstant", document));
-            providerName = Saml.toString(xpath.evaluate("samlp:AuthnRequest/@ProviderName", document));
-            nameIdPolicy = Format.parse(xpath.evaluate("samlp:AuthnRequest/samlp:NameIDPolicy/@Format", document));
-            protocolBinding = ProtocolBinding.parse(xpath.evaluate("samlp:AuthnRequest/@ProtocolBinding", document));
-            assertionConsumerServiceURL = Saml.toURI(xpath.evaluate("samlp:AuthnRequest/@AssertionConsumerServiceURL", document));
-        } catch (XPathExpressionException exception) {
-            throw new IllegalStateException("Exception evaluating XPath", exception);
-        }
-
-        return new SamlAuthnRequest() {
-            @Override public String getID()                       { return id;  }
-            @Override public String getIssuer()                   { return issuer;  }
-            @Override public String getVersion()                  { return version; }
-            @Override public Date getIssueInstant()               { return issueInstant; }
-            @Override public String getProviderName()             { return providerName; }
-            @Override public Format getNameIDPolicy()             { return nameIdPolicy; }
-            @Override public ProtocolBinding getProtocolBinding() { return protocolBinding; }
-            @Override public URI getAssertionConsumerServiceURL() { return assertionConsumerServiceURL; }
-        };
-    }
 }

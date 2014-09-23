@@ -16,9 +16,7 @@
 package org.usrz.libs.saml;
 
 import java.net.URI;
-import java.time.Instant;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -26,6 +24,11 @@ import java.util.Map;
 import javax.xml.crypto.dsig.XMLSignature;
 import javax.xml.namespace.NamespaceContext;
 
+/**
+ * A class envelping all the constants used by our <i>SAML</i> implementation.
+ *
+ * @author <a href="mailto:pier@usrz.com">Pier Fumagalli</a>
+ */
 public final class Saml {
 
     private Saml() {
@@ -34,41 +37,20 @@ public final class Saml {
 
     /* ====================================================================== */
 
-    public static String toString(Object object) {
-        if (object == null) return null;
-
-        final String string = object instanceof String ? ((String) object) :
-                              object instanceof Date   ? ((Date) object).toInstant().toString() :
-                              object.toString();
-
-        if (string == null) return null; // object.toString() might return null
-        final String trimmed = string.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    public static Date toDate(Object object) {
-        if (object instanceof Date) return (Date) object;
-        if (object instanceof Instant) return Date.from((Instant) object);
-        final String string = toString(object);
-        if (string == null) return null;
-        return Date.from(Instant.parse(string));
-    }
-
-    public static URI toURI(Object object) {
-        if (object instanceof URI) return (URI) object;
-        final String string = toString(object);
-        if (string == null) return null;
-        return URI.create(string);
-    }
-
-    /* ====================================================================== */
-
+    /** The version of the <i>SAML</i> specification: <code>2.0</code> */
     public static final String VERSION = "2.0";
 
     /* ====================================================================== */
 
+    /**
+     * The supported <i>SAML Protocol Bindings</i>
+     *
+     * @author <a href="mailto:pier@usrz.com">Pier Fumagalli</a>
+     */
     public enum ProtocolBinding {
+        /** Redirect: <code>urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect</code> */
         HTTP_REDIRECT("urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"),
+        /** POST: <code>urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST</code> */
         HTTP_POST("urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST");
 
         private final URI uri;
@@ -77,8 +59,11 @@ public final class Saml {
             this.uri = URI.create(uri);
         }
 
-        public static ProtocolBinding parse(Object object) {
-            final String string = Saml.toString(object);
+        /**
+         * Return a {@link ProtocolBinding} instance parsing a {@link String}.
+         */
+        public static ProtocolBinding parse(String protocol) {
+            final String string = SamlUtilities.toString(protocol);
             if (string == null) return null;
             final URI uri = URI.create(string);
             for (ProtocolBinding binding: ProtocolBinding.values()) {
@@ -87,6 +72,9 @@ public final class Saml {
             throw new IllegalArgumentException("Unknown SAML protocol binding " + string);
         }
 
+        /**
+         * Return the <i>SAML</i> constant for this {@link ProtocolBinding}.
+         */
         @Override
         public String toString() {
             return uri.toASCIIString();
@@ -96,26 +84,40 @@ public final class Saml {
 
     /* ====================================================================== */
 
-    public enum Format {
+    /**
+     * The supported <i>SAML Name ID Formats</i>
+     *
+     * @author <a href="mailto:pier@usrz.com">Pier Fumagalli</a>
+     */
+    public enum NameIdFormat {
+
+        /** Unspecified: <code>urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified</code> */
         UNSPECIFIED("urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"),
+        /** Email Address: <code>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</code> */
         EMAIL_ADDRESS("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress");
 
         private final URI uri;
 
-        private Format(String uri) {
+        private NameIdFormat(String uri) {
             this.uri = URI.create(uri);
         }
 
-        public static Format parse(Object object) {
-            final String string = Saml.toString(object);
+        /**
+         * Return a {@link NameIdFormat} instance parsing a {@link String}.
+         */
+        public static NameIdFormat parse(String nameIdFormat) {
+            final String string = SamlUtilities.toString(nameIdFormat);
             if (string == null) return null;
             final URI uri = URI.create(string);
-            for (Format format: Format.values()) {
+            for (NameIdFormat format: NameIdFormat.values()) {
                 if (format.uri.equals(uri)) return format;
             }
             throw new IllegalArgumentException("Unknown SAML format " + string);
         }
 
+        /**
+         * Return the <i>SAML</i> constant for this {@link NameIdFormat}.
+         */
         @Override
         public String toString() {
             return uri.toASCIIString();
@@ -125,28 +127,43 @@ public final class Saml {
 
     /* ====================================================================== */
 
-    public enum Value {
+    /**
+     * The supported <i>SAML Authentication Statuses</i>
+     *
+     * @author <a href="mailto:pier@usrz.com">Pier Fumagalli</a>
+     */
+    public enum Status {
+        /** Success: <code>urn:oasis:names:tc:SAML:2.0:status:Success</code> */
         SUCCESS("urn:oasis:names:tc:SAML:2.0:status:Success"),
+        /** Authentication failed: <code>urn:oasis:names:tc:SAML:2.0:status:AuthnFailed</code> */
         AUTHN_FAILED("urn:oasis:names:tc:SAML:2.0:status:AuthnFailed"),
+        /** Request denied: <code>urn:oasis:names:tc:SAML:2.0:status:RequestDenied</code> */
         REQUEST_DENIED("urn:oasis:names:tc:SAML:2.0:status:RequestDenied"),
+        /** <i>SAML</i> version mismatch: <code>urn:oasis:names:tc:SAML:2.0:status:VersionMismatch</code> */
         VERSION_MISMATCH("urn:oasis:names:tc:SAML:2.0:status:VersionMismatch");
 
         private final URI uri;
 
-        private Value(String uri) {
+        private Status(String uri) {
             this.uri = URI.create(uri);
         }
 
-        public static Value parse(Object object) {
-            final String string = Saml.toString(object);
+        /**
+         * Return a {@link Status} instance parsing a {@link String}.
+         */
+        public static Status parse(String status) {
+            final String string = SamlUtilities.toString(status);
             if (string == null) return null;
             final URI uri = URI.create(string);
-            for (Value value: Value.values()) {
+            for (Status value: Status.values()) {
                 if (value.uri.equals(uri)) return value;
             }
             throw new IllegalArgumentException("Unknown SAML value " + string);
         }
 
+        /**
+         * Return the <i>SAML</i> constant for this {@link Status}.
+         */
         @Override
         public String toString() {
             return uri.toASCIIString();
@@ -156,29 +173,71 @@ public final class Saml {
 
     /* ====================================================================== */
 
-    public enum Namespace {
+    /**
+     * An enumeration indicating what part of a response should be signed.
+     *
+     * @author <a href="mailto:pier@usrz.com">Pier Fumagalli</a>
+     */
+    public enum SignatureTarget {
 
-        XML_DSIG("ds", XMLSignature.XMLNS),
+        /** Sign only the <i>SAML Protocol Response</i> element. */
+        RESPONSE,
+        /** Sign only the <i>SAML Assertion</i> element (this is the default). */
+        ASSERTION,
+        /** Sign both the <i>SAML Protocol Response</i> and  <i>SAML Assertion</i> elements. */
+        BOTH;
+
+    }
+
+    /* ====================================================================== */
+
+    /**
+     * A collection of <i>XML namespaces</i> for <i>SAML</i> processing.
+     *
+     * @author <a href="mailto:pier@usrz.com">Pier Fumagalli</a>
+     */
+    public enum Namespace {
+        /**
+         * The <i>SAML Protocol</i> namespace.
+         * <dl>
+         *   <dt>Prefix</dt><dd><code>samlp</code></dd>
+         *   <dt>URI</dt><dd><code>urn:oasis:names:tc:SAML:2.0:protocol</code></dd>
+         * </dl>
+         */
         SAMLP("samlp", "urn:oasis:names:tc:SAML:2.0:protocol"),
-        SAML("saml", "urn:oasis:names:tc:SAML:2.0:assertion");
+        /**
+         * The <i>SAML Assertion</i> namespace.
+         * <dl>
+         *   <dt>Prefix</dt><dd><code>saml</code></dd>
+         *   <dt>URI</dt><dd><code>urn:oasis:names:tc:SAML:2.0:assertion</code></dd>
+         * </dl>
+         */
+        SAML("saml", "urn:oasis:names:tc:SAML:2.0:assertion"),
+        /**
+         * The <i>XML Digital Signatures</i> namespace.
+         * <dl>
+         *   <dt>Prefix</dt><dd><code>dsig</code></dd>
+         *   <dt>URI</dt><dd><code>http://www.w3.org/2000/09/xmldsig#</code></dd>
+         * </dl>
+         */
+        DSIG("dsig", XMLSignature.XMLNS);
 
         private static NamespaceContext context;
-        private final String prefix;
-        private final String uri;
+
+        /** The <i>prefix</i> of this namespace. */
+        public final String PREFIX;
+        /** The <i>uri</i> of this namespace. */
+        public final String URI;
 
         private Namespace(String prefix, String uri) {
-            this.prefix = prefix;
-            this.uri = uri;
+            PREFIX = prefix;
+            URI = uri;
         }
 
-        public String prefix() {
-            return prefix;
-        }
-
-        public String uri() {
-            return uri;
-        }
-
+        /**
+         * Return a {@link NamespaceContext} containing all known <i>SAML</i>
+         * namespaces.
+         */
         public static NamespaceContext context() {
             if (context != null) return context;
             return context = new SamlNamespaceContext();
@@ -194,8 +253,8 @@ public final class Saml {
             prefixes = new HashMap<>();
             namespaces = new HashMap<>();
             for (Namespace namespace: Namespace.values()) {
-                prefixes.put(namespace.prefix(), namespace.uri());
-                namespaces.put(namespace.uri(), namespace.prefix());
+                prefixes.put(namespace.PREFIX, namespace.URI);
+                namespaces.put(namespace.URI, namespace.PREFIX);
             }
         }
 
