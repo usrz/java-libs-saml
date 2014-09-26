@@ -45,6 +45,7 @@ public class SchemaResolver implements LSResourceResolver {
     }
 
     @Override
+    @SuppressWarnings("resource")
     public LSInput resolveResource(String type, String namespaceURI, String publicId, String systemId, String baseURI) {
         final URI uri = URI.create(systemId == null ? baseURI : systemId);
 
@@ -56,7 +57,6 @@ public class SchemaResolver implements LSResourceResolver {
         input.setByteStream(stream);
         return input;
     }
-
 
     public static final Validator validator(String schemaUrl)
     throws Exception {
