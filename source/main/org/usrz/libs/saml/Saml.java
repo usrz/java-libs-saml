@@ -15,8 +15,9 @@
  * ========================================================================== */
 package org.usrz.libs.saml;
 
+import static com.google.common.collect.Iterators.singletonIterator;
+
 import java.net.URI;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -240,39 +241,24 @@ public final class Saml {
          */
         public static NamespaceContext context() {
             if (context != null) return context;
-            return context = new SamlNamespaceContext();
+            return context = new NamespaceContext() {
+
+                private final Map<String, String> prefixes = new HashMap<>();
+                private final Map<String, String> namespaces = new HashMap<>();
+
+                {
+                    for (Namespace namespace: Namespace.values()) {
+                        prefixes.put(namespace.PREFIX, namespace.URI);
+                        namespaces.put(namespace.URI, namespace.PREFIX);
+                    }
+                }
+
+                @Override public String getNamespaceURI(String prefix) { return prefixes.get(prefix); }
+                @Override public String getPrefix(String namespaceURI) { return namespaces.get(namespaceURI); }
+                @Override public Iterator<?> getPrefixes(String namespaceURI) { return singletonIterator(getPrefix(namespaceURI)); }
+
+            };
         }
 
     };
-
-    private static class SamlNamespaceContext implements NamespaceContext {
-        private final Map<String, String> prefixes;
-        private final Map<String, String> namespaces;
-
-        private SamlNamespaceContext() {
-            prefixes = new HashMap<>();
-            namespaces = new HashMap<>();
-            for (Namespace namespace: Namespace.values()) {
-                prefixes.put(namespace.PREFIX, namespace.URI);
-                namespaces.put(namespace.URI, namespace.PREFIX);
-            }
-        }
-
-        @Override
-        public String getNamespaceURI(String prefix) {
-            return prefixes.get(prefix);
-        }
-
-        @Override
-        public String getPrefix(String namespaceURI) {
-            return namespaces.get(namespaceURI);
-        }
-
-        @Override
-        public Iterator<?> getPrefixes(String namespaceURI) {
-            return Collections.singleton(namespaces.get(namespaceURI)).iterator();
-        }
-    }
-
-
 }
